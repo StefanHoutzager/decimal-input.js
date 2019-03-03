@@ -19,10 +19,12 @@
           - With all keydown and paste actions with the selectionstart position in the integer part thousands separators have to appear in the right positions
           - If no constraint is met the input is rejected (not printed)
           - If input is rejected on paste a validation message appears for three seconds
+		  
+          Requirements:
 
           - Behaviour on delete keydown
             With nothing selected
-            - If the cursor is in the decimalpart change the value of the digit in zero and move the cursor one position to the righ
+            - If the cursor is in the decimalpart change the value of the digit in zero and move the cursor one position to the right
             - If the cursor is in the integer part and left of the decimalSeparator or a thousandsSeparator move the cursor one position to the right
             - If the cursor is in the integer part, left of the only digit in the integer part change the value to zero and don't move the cursor
             - If the cursor is in the integer part, left of a digit which is not the only one in the integer part remove the digit and don't move the cursor
@@ -43,7 +45,7 @@
             - Replace selected digits in the decimal part with zero
             - If the whole integerpart of the number is selected replace that part with zero and move the cursor to position zero
             - If a part of the integerpart is selected starting at position zero remove the selection and put the cursor to position zero
-            - If a part of the integerpart is selected starting at a position that is not zero remove the selection. TODO Put the cursor at the starting position of the removed part
+            - If a part of the integerpart is selected starting at a position that is not zero remove the selection. Put the cursor at the starting position of the removed part
 		
           - Behaviour on decimalSeparator keydown
             - If the cursor is in the integer part move the cursor to the right of the decimalSeparator
@@ -51,8 +53,9 @@
           - Behaviour on digit keydown
             With nothing selected 
             - If the cursor is in the decimalpart replace the digit right of the cursor and put the cursor one position to the right
-            - If the cursor is in the integer part on position zero and the integerpart value is zero replace the zero and put the cursor one position to the right
-            - If the cursor is in the integer part, not on postion zero put the keyvalue left of digit, let the cursorposition the same
+            - If the cursor is in the integer part on a position immediately left of the first digit and the integerpart value is zero (or -0) replace the zero and put the cursor one position to the right
+            - If the cursor is in the integer part on a position immediately right of the first digit and the integerpart value is zero (or -0) replace the zero, cursor position not altered
+            - If the cursor is in the integer part, on a position not left of the first digit, print the keyvalue, let the cursorposition the same
             - If the cursor is in the integer part on position zero and the keyvalue is zero no action follows (digit is not printed, cursor position not altered)
             With a selection
             - If the cursor is in the decimalpart replace the first selected with the typed digit, put the cursor right of the replaced digit
@@ -64,13 +67,14 @@
               the new digit
             - If the cursor is in the integer part, at a non-zero position and a digit is typed replace the selected integerpart with the typed digit one and put the cursor after
               the new digit
-            - Behaviour on minus sign keydown (only if the attribute allowNegativeSign is set for the element)
+
+          - Behaviour on minus sign keydown (only if the attribute allowNegativeSign is set for the element)
             With nothing selected   
             - If the input value does not already start with a minus and the cursor is at position zero print the minus, put the cursor to the right of the minus
             - If the input value does start with a minus and the cursor is at position zero put the cursor to the right of the minus
             With a selection
-            - TODO If the selection starts at position zero, ends before the last integer digit while there are more than one digits in the integerpart 
-              replace the selection with the minus
+            - If the selection starts at position zero, ends before the last integer digit while there are more than one digits in the integerpart 
+              replace the selection with the minus, put the cursor after the minus
 	 
           - Behaviour on select all
             This action is allowed	

@@ -32,6 +32,7 @@
           return -1;  
         }
         else {
+          const nothingSelected = nothingIsSelected(e);
           let elementValue = '';
           if (cursorLeftOfFirstDigit(e) && decSeparatorInSelection(e)) {
             elementValue = replaceWithIntPart(e, '0');
@@ -41,7 +42,6 @@
           }	
           elementValue   = decSeparatorInSelection(e) && numSelectedDecimals(e) > 0 ? replaceAtDecPart(elementValue, e) : elementValue;
           elementValue   = removeLeadingZeros(elementValue, e); 
-          let nothingSelected = nothingIsSelected(e);
           e.target.value = elementValue;	
           return updatethousandsSeparators(e) + (nothingSelected ? 0 : 1);		
         }				
@@ -51,7 +51,7 @@
 	  
       const correctCharacterInputViaNumpadAndDeadKeys = element => {
         if (element.altKeyDown || [...element.value].filter(x => ['^','`','~'].includes(x)).length > 0) {
-          let selectionStart = element.selectionStart - 1;
+          const selectionStart = element.selectionStart - 1;
           element.value          = element.oldValue;
           element.selectionStart = selectionStart;
           element.selectionEnd   = selectionStart;
@@ -63,7 +63,7 @@
          && cursorPositionRight(e) <= numDecimals(e)
          && cursorPositionRight(e) >= 0;	   
 	   
-      const cursorLeftOfFirstDigit  = e => e.target.selectionStart === (isNegative(e.target.value) ? 1 : 0); 
+      const cursorLeftOfFirstDigit  = e => isNegative(e.target.value) ? [0, 1].includes(e.target.selectionStart) : e.target.selectionStart === 0; 
 	    	  
       const cursorPositionRight     = e => e.target.value.length - e.target.selectionStart;
 	 
@@ -104,7 +104,7 @@
           else {
             let elementValue = replaceWithIntPart(e, '');
             elementValue   = removeLeadingZeros(elementValue, e); 
-             e.target.value = elementValue;
+            e.target.value = elementValue;
           }
         }	
         else {
@@ -124,14 +124,17 @@
 
         if ((e.key.startsWith('F') && e.key.length > 1)) {return true;}
 		
-        let selectionStart = e.target.selectionStart,
-            resetCursor    = 0;
+        const selectionStart = e.target.selectionStart;
+        let   resetCursor    = 0;
 
         if (!e.shiftKey) {  
+          // The value of the input is divided in an integer- and a decimal part to ease the handling of their different properties.
+          // For example: in the integerpart placement of thousandseparators has to be handled, if a number is typed or delete or backspace, 
+          // after the decimal separator, the number affected is replaced in the decimalpart while this happens in the integerpart only 
+          // when the integervalue is zero. The value of resetCursor is calculated and returned by the functions and is used to replace the cursor 
           resetCursor = cursorIsInDecimalPart(e) ? keyDownDecimalPart(e) : keyDownIntegerPart(e); 
         }
 			  		  
-        // if a number is typed or delete or backspace after the decimal separator replace the number affected 
         if ((!isSpecialKey(e) || isADigit(e.key) || isDeleteKey(e) || e.key === 'Backspace' || isDecimalSeparatorKey(e) || e.key === '-')  
           && !e.ctrlKey) {  
           e.preventDefault();
@@ -144,12 +147,12 @@
 	  
       const handleOnPaste = e  => {
         if (e.clipboardData.getData('text/plain') != '') {
-          let validationMessage = validatePasteValue(e);
+          const validationMessage = validatePasteValue(e);
           if (validationMessage === '') {  
-            let clipboardData = removeLeadingZeros(removeThousandsSeparators(e.target, e.clipboardData.getData('text/plain')), e);
+            const clipboardData = removeLeadingZeros(removeThousandsSeparators(e.target, e.clipboardData.getData('text/plain')), e);
             if (numDecimalsInFormat(e.target) > 0 ) { 
-              let clipboardDataContainsDecimalSeparator = clipboardData.lastIndexOf(decimalSeparator(e.target)) > 0;
-              let numDecimalsToAdd = numDecimalsInFormat(e.target) - (clipboardDataContainsDecimalSeparator ? clipboardData.split(decimalSeparator(e.target))[1].length : 0);
+              const clipboardDataContainsDecimalSeparator = clipboardData.lastIndexOf(decimalSeparator(e.target)) > 0;
+              const numDecimalsToAdd = numDecimalsInFormat(e.target) - (clipboardDataContainsDecimalSeparator ? clipboardData.split(decimalSeparator(e.target))[1].length : 0);
               if (clipboardDataContainsDecimalSeparator) {
                 e.target.value = clipboardData + (numDecimalsToAdd > 0 ? '0'.repeat(numDecimalsToAdd) : '');
               } 	
@@ -160,7 +163,7 @@
             else {
               e.target.value = clipboardData; 
             }	
-            let dummy = updatethousandsSeparators(e);
+            const dummy = updatethousandsSeparators(e);
           }
           else {
             showMessage(e, validationMessage); 
@@ -171,13 +174,14 @@
         return false;		
       };
 	  
-      const insertNumberKey = e => 
-        (e.target.value.slice(e.target.value.startsWith('0') ? 1 : 0, e.target.selectionStart) 
+      const insertNumberKey = e =>
+        (isNegative(e.target.value) ? ('-' + (e.target.value.slice(e.target.value.startsWith('-0') ? 2 : 1, e.target.selectionStart))) :
+        (e.target.value.slice(e.target.value.startsWith('0') ? 1 : 0, e.target.selectionStart))) 
          + e.key 
-         + e.target.value.slice(decSeparatorInSelection(e) ? decSeparatorLoc(e.target) : e.target.selectionEnd));
+         + e.target.value.slice(decSeparatorInSelection(e) ? decSeparatorLoc(e.target) : e.target.selectionEnd);
 											   
       const insertStyleSheetRule = ruleText => {
-        let sheets = document.styleSheets;
+        const sheets = document.styleSheets;
 
         if(sheets.length == 0) {
           let style = document.createElement('style');
@@ -197,7 +201,7 @@
         numbersArray().includes(val) 
         || (val === decimalSeparator(e.target) && e.target.hasAttribute('numDecimals')) 
         ||  val === thousandsSeparator(e.target)
-	|| (val === '-' && e.target.hasAttribute('allowNegativeSign')) ;																		  
+        || (val === '-' && e.target.hasAttribute('allowNegativeSign')) ;																		  
       
       const isDecimalSeparatorKey    = e   => ((e.key === 'Delete' || e.key === 'Del' /* MS Edge */) && e.location === 3) || e.key === decimalSeparator(e.target); 
 	  
@@ -213,34 +217,10 @@
 	  
       const isWholeValueSelected     = e   => e.target.selectionStart === 0 && e.target.selectionEnd === e.target.value.length;
 			
-      const jumpOverSeparator = e   =>  
+      const jumpOverSeparator = e  =>  
         nothingIsSelected(e) 
-        && [e.target.value.indexOf(thousandsSeparator(e.target)), decSeparatorLoc(e.target)].includes(e.target.selectionStart - (isDeleteKey(e) ? 0 : 1));				
-	  
-      const keyDownIntegerPart = e  => {  
-        if (isDeleteKey(e)) { 
-          return deleteKeyDownIntegerPart(e);
-        }  
-        if (e.key === 'Backspace') {
-          return backspaceKeyDownIntegerPart(e);
-        }
-        if (isDecimalSeparatorKey(e) && decSeparatorLoc(e.target) > -1) {
-          return 1;
-        }
-        if (isADigit(e.key) && (numDigitsAllowed(e) || !nothingIsSelected(e))) {
-          return numberKeyDownIntegerPart(e);	
-        }
-        if (e.key === '-' && e.target.hasAttribute('allowNegativeSign') && e.target.selectionStart === 0) {
-          if (!isNegative(e.target.value)) {
-            if (nothingIsSelected(e)) {
-              e.target.value = '-' + e.target.value;
-            }
-          }		
-          return 1;
-        }
-        return 0;
-      };
-	  
+        && [e.target.value.indexOf(thousandsSeparator(e.target)), decSeparatorLoc(e.target)].includes(e.target.selectionStart - (isDeleteKey(e) ? 0 : 1));		
+
       const keyDownDecimalPart = e => {
         if (e.key === 'Backspace') {
           const nothingSelected = nothingIsSelected(e);
@@ -260,23 +240,49 @@
           }		
         }
         return 0;	  
-      };	
+      };		
+	  
+      const keyDownIntegerPart = e  => {  
+        if (isDeleteKey(e)) { 
+          return deleteKeyDownIntegerPart(e);
+        }  
+        if (e.key === 'Backspace') {
+          return backspaceKeyDownIntegerPart(e);
+        }
+        if (isDecimalSeparatorKey(e) && decSeparatorLoc(e.target) > -1) {
+          return 1;
+        }
+        if (isADigit(e.key) && (numDigitsAllowed(e) || !nothingIsSelected(e))) {
+          return numberKeyDownIntegerPart(e);	
+        }
+        if (e.key === '-' && e.target.hasAttribute('allowNegativeSign') && e.target.selectionStart === 0) {
+          if (!isNegative(e.target.value) && nothingIsSelected(e)) {
+             e.target.value = '-' + e.target.value;
+          }
+          else if (!nothingIsSelected(e) && !decSeparatorInSelection(e) && (integerPart(e).length > (e.target.selectionEnd - e.target.selectionStart))) {
+            e.target.value = '-' + e.target.value.substring(e.target.selectionEnd);
+            const dummy = updatethousandsSeparators(e);
+          }		
+          return 1;
+        }
+        return 0;
+      };
  
       const maxDigitsInFormat = element => {
         if (element.hasAttribute('maxDigits') )  {
-          let digits = parseInt(element.getAttribute('maxDigits'));
-           if (!(digits > 0)) {
-             setConfigError(element, 'maxDigits attribute ' + element.getAttribute('maxDigits') + ' should be an integer value above zero.');
-             return 0; 
-           }
-           if (digits > 0 && (digits >= numDecimalsInFormat(element))) {return digits;}
-           if (digits <= numDecimalsInFormat(element)) {
-              setConfigError(element, 'maxDigits attribute should be greater than numDecimals.'); 
-              return 0;
-           }
-         }   
-         setConfigError(element, 'maxDigits attribute not set for this element.'); 
-         return 0;
+          const digits = parseInt(element.getAttribute('maxDigits'));
+          if (!(digits > 0)) {
+            setConfigError(element, 'maxDigits attribute ' + element.getAttribute('maxDigits') + ' should be an integer value above zero.');
+            return 0; 
+          }
+          if (digits > 0 && (digits >= numDecimalsInFormat(element))) {return digits;}
+          if (digits <= numDecimalsInFormat(element)) {
+            setConfigError(element, 'maxDigits attribute should be greater than numDecimals.'); 
+            return 0;
+          }
+        }   
+        setConfigError(element, 'maxDigits attribute not set for this element.'); 
+        return 0;
       };	
 		
       const nothingIsSelected = e  => e.target.selectionStart === e.target.selectionEnd;
@@ -284,7 +290,7 @@
       const numberKeyDownIntegerPart = e =>	{	 
         if (cursorLeftOfFirstDigit(e)) {
           if (   e.key === '0'
-              && (nothingIsSelected(e) || (!nothingIsSelected(e) && integerPart(e).length != 1 && integerPart(e).length > e.target.selectionEnd))
+              && (nothingIsSelected(e) || (integerPart(e).length != 1 && integerPart(e).length > e.target.selectionEnd))
              ) {
             return 0;	
           } 	
@@ -294,7 +300,12 @@
             return 1;
           }
         }  
+        const integerPartBeforeUpdate = integerPart(e);
         e.target.value = insertNumberKey(e);
+        if (integerPart(e).length <= 3) { 
+          // if the inserted number replaced a zero let the cursor at the same position, otherwise put it one position to the right 
+          return integerPartBeforeUpdate.length === integerPart(e).length ? 0 : 1;
+        }
         return updatethousandsSeparators(e);
       };	
 	  
@@ -308,7 +319,7 @@
 	  
       const numDecimalsInFormat = element => {
         if (element.hasAttribute('numDecimals')) {
-          let decs = parseInt(element.getAttribute('numDecimals'));
+          const decs = parseInt(element.getAttribute('numDecimals'));
           if (decs > 0) {return decs;}
           setConfigError(element, 'numDecimals attribute ' + element.getAttribute('numDecimals') + ' should be an integer value above zero.'); 
           return 0;
@@ -347,8 +358,9 @@
       }; 		
  
       const removeLeadingZeros = (elementValue, e) => {
-        let negativeValue = isNegative(elementValue),
-            returnValue   = negativeValue ? elementValue.substring(1) : elementValue;
+        const negativeValue = isNegative(elementValue);
+        let   returnValue   = negativeValue ? elementValue.substring(1) : elementValue;
+		
         while (
                (returnValue.startsWith('0') && returnValue.split(decimalSeparator(e.target))[0].length > 1) 
                 || returnValue.startsWith(thousandsSeparator(e.target))
@@ -364,8 +376,8 @@
       const removeThousandsSeparators = (element, value) => value.split(thousandsSeparator(element)).join('');	  
 
       const replaceAtDecPart = (elementValue, e) => { 			                                                        
-        let insertString = isDeleteKey(e) || e.key === 'Backspace' ? '0'.repeat(numSelectedDecimals(e) || 1) : e.key; 
-        let startString  = '';
+        const insertString = isDeleteKey(e) || e.key === 'Backspace' ? '0'.repeat(numSelectedDecimals(e) || 1) : e.key; 
+        let   startString  = '';
 
         if (isDeleteKey(e)) {
           startString = cursorIsInDecimalPart(e) ? elementValue.substring(0, e.target.selectionStart) : elementValue.substring(0, elementValue.indexOf(decimalSeparator(e.target)) + 1);
@@ -381,8 +393,9 @@
       };
 																	
       const replaceWithIntPart = (e, replace) => {
-        let startString = e.target.value.substring(0, e.target.selectionStart);
-        let endString   = e.target.value.substring(decSeparatorInSelection(e) ? decSeparatorLoc(e.target) : e.target.selectionEnd);
+        let startString = e.target.value.substring(0, e.target.selectionStart),
+            endString   = e.target.value.substring(decSeparatorInSelection(e) ? decSeparatorLoc(e.target) : e.target.selectionEnd);
+			
         if (nothingIsSelected(e)) {
           // only integer part 
           if (e.key === 'Backspace') {
@@ -391,9 +404,7 @@
           else if (isDeleteKey(e)) {
             endString = e.target.value.substring(decSeparatorInSelection(e) ? decSeparatorLoc(e.target) : (e.target.selectionEnd + 1))};
           }
-          return startString
-                 + replace
-                 + endString;
+          return startString + replace + endString;
       }; 
 			
       const setAnimation = (element, animation) => {
@@ -459,20 +470,21 @@
       const thousandsSeparatorDefault = () => decimalSeparatorDefault() === ',' ? '.' : ',';	  
 
       const updatethousandsSeparators = e => { 
-        let elementValueOrg    = e.target.value, 
-            [intPart, decPart] = e.target.value.split(decimalSeparator(e.target)),
-            negativeValue      = isNegative(intPart);
-        if (negativeValue) {
+        const elementValueOrg    = e.target.value;
+        let   [intPart, decPart] = e.target.value.split(decimalSeparator(e.target));
+        		
+        if (isNegative(e.target.value)) {
           intPart = intPart.substring(1);
         }  
+
         intPart = removeThousandsSeparators(e.target, intPart); 
         intPart = intPart.length > 3 ? addThousandsSeparators(e, intPart) : intPart;
 
         if (decPart === undefined) {
-          e.target.value = (negativeValue ? '-' : '') + intPart; 
+          e.target.value = (isNegative(e.target.value) ? '-' : '') + intPart; 
         }	
         else {			  
-          e.target.value = (negativeValue ? '-' : '') + intPart + decimalSeparator(e.target) + decPart;   
+          e.target.value = (isNegative(e.target.value) ? '-' : '') + intPart + decimalSeparator(e.target) + decPart;   
         } 
         if (isDeleteKey(e)) { 
           return numThousandsSeparators(e.target, e.target.value) - numThousandsSeparators(e.target, elementValueOrg);
@@ -487,29 +499,29 @@
         if (!isWholeValueSelected(e)) {
           return 'Paste only allowed when the current value is selected';
         } 
-	if (!e.target.hasAttribute('allowNegativeSign') && e.clipboardData.getData('text/plain').startsWith('-')) {
-	  return 'Clipboard contains a negative value, this is not allowed';
-	}		
+        if (!e.target.hasAttribute('allowNegativeSign') && e.clipboardData.getData('text/plain').startsWith('-')) {
+          return 'Clipboard contains a negative value, this is not allowed';
+        }		
         if (clipboardContainsDisallowedCharacters(e) 
-	    || (e.target.hasAttribute('allowNegativeSign') && e.clipboardData.getData('text/plain').lastIndexOf('-') > 0)) {
+            || (e.target.hasAttribute('allowNegativeSign') && e.clipboardData.getData('text/plain').lastIndexOf('-') > 0)) {
           return 'Clipboard contains invalid characters';
         } 
-	if (e.clipboardData.getData('text/plain').startsWith('.') || e.clipboardData.getData('text/plain').startsWith(',')) {
-	  return 'Clipboard value should start with a digit'; 
-	}
+        if (e.clipboardData.getData('text/plain').startsWith('.') || e.clipboardData.getData('text/plain').startsWith(',')) {
+          return 'Clipboard value should start with a digit'; 
+        }
         if (!numDigitsInClipboardAllowed(e)) {
           return 'Clipboard contains more digits than allowed (' + maxDigitsInFormat(e.target) + ')';
         }
         if (isInputWithDecimals(e)) {
-	  if (numDecimalsInClipboard(e) > numDecimalsInFormat(e.target)) {
+          if (numDecimalsInClipboard(e) > numDecimalsInFormat(e.target)) {
             return 'No more than ' + numDecimalsInFormat(e.target) + ' decimals allowed in clipboard';
           }
         }
-	else {
-	  if (!numDecimalsInClipboard(e) === 0) {
-	    return 'Clipboard contains decimals, this is not allowed';
-	  }
-	}
+        else {
+          if (!numDecimalsInClipboard(e) === 0) {
+            return 'Clipboard contains decimals, this is not allowed';
+          }
+        }
         return '';
       };	  
 			
@@ -607,10 +619,12 @@
           - With all keydown and paste actions with the selectionstart position in the integer part thousands separators have to appear in the right positions
           - If no constraint is met the input is rejected (not printed)
           - If input is rejected on paste a validation message appears for three seconds
+		  
+          Requirements:
 
           - Behaviour on delete keydown
             With nothing selected
-            - If the cursor is in the decimalpart change the value of the digit in zero and move the cursor one position to the righ
+            - If the cursor is in the decimalpart change the value of the digit in zero and move the cursor one position to the right
             - If the cursor is in the integer part and left of the decimalSeparator or a thousandsSeparator move the cursor one position to the right
             - If the cursor is in the integer part, left of the only digit in the integer part change the value to zero and don't move the cursor
             - If the cursor is in the integer part, left of a digit which is not the only one in the integer part remove the digit and don't move the cursor
@@ -631,7 +645,7 @@
             - Replace selected digits in the decimal part with zero
             - If the whole integerpart of the number is selected replace that part with zero and move the cursor to position zero
             - If a part of the integerpart is selected starting at position zero remove the selection and put the cursor to position zero
-            - If a part of the integerpart is selected starting at a position that is not zero remove the selection. TODO Put the cursor at the starting position of the removed part
+            - If a part of the integerpart is selected starting at a position that is not zero remove the selection. Put the cursor at the starting position of the removed part
 		
           - Behaviour on decimalSeparator keydown
             - If the cursor is in the integer part move the cursor to the right of the decimalSeparator
@@ -639,8 +653,9 @@
           - Behaviour on digit keydown
             With nothing selected 
             - If the cursor is in the decimalpart replace the digit right of the cursor and put the cursor one position to the right
-            - If the cursor is in the integer part on position zero and the integerpart value is zero replace the zero and put the cursor one position to the right
-            - If the cursor is in the integer part, not on postion zero put the keyvalue left of digit, let the cursorposition the same
+            - If the cursor is in the integer part on a position immediately left of the first digit and the integerpart value is zero (or -0) replace the zero and put the cursor one position to the right
+            - If the cursor is in the integer part on a position immediately right of the first digit and the integerpart value is zero (or -0) replace the zero, cursor position not altered
+            - If the cursor is in the integer part, on a position not left of the first digit, print the keyvalue, let the cursorposition the same
             - If the cursor is in the integer part on position zero and the keyvalue is zero no action follows (digit is not printed, cursor position not altered)
             With a selection
             - If the cursor is in the decimalpart replace the first selected with the typed digit, put the cursor right of the replaced digit
@@ -652,13 +667,14 @@
               the new digit
             - If the cursor is in the integer part, at a non-zero position and a digit is typed replace the selected integerpart with the typed digit one and put the cursor after
               the new digit
-            - Behaviour on minus sign keydown (only if the attribute allowNegativeSign is set for the element)
+
+          - Behaviour on minus sign keydown (only if the attribute allowNegativeSign is set for the element)
             With nothing selected   
             - If the input value does not already start with a minus and the cursor is at position zero print the minus, put the cursor to the right of the minus
             - If the input value does start with a minus and the cursor is at position zero put the cursor to the right of the minus
             With a selection
-            - TODO If the selection starts at position zero, ends before the last integer digit while there are more than one digits in the integerpart 
-              replace the selection with the minus
+            - If the selection starts at position zero, ends before the last integer digit while there are more than one digits in the integerpart 
+              replace the selection with the minus, put the cursor after the minus
 	 
           - Behaviour on select all
             This action is allowed	
