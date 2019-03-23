@@ -1,5 +1,7 @@
-  This is a test / demo html file with javascript to handle a configurable input field for decimals. It works in
-  at least the newest versions of Chrome, Firefox and Edge
+  This is a javascript library to format decimal input fields while you type.
+  Try demo.html via a http server (for example https://github.com/indexzero/http-server)
+  It works in at least the newest versions of Chrome, Firefox and Edge; ES6 is used.
+
   Configurable with HTML attributes in the decimal input field are:
   - numDecimals
   - maxDigits
